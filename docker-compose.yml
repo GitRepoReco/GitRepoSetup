@@ -1,0 +1,107 @@
+services:
+  # --------------------------------------------------------
+  # PostgreSQL (avec extension vectorielle pgvector pour la reco)
+  # --------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gitreporeco_postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-github_data}
+      POSTGRES_USER: ${POSTGRES_ADMIN:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-github_data}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - gitreporeco-net
+
+  # --------------------------------------------------------
+  # GitRepoReco Init — Initialisation de la base (schémas, extensions, tables)
+  # --------------------------------------------------------
+  gitreporeco-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gitreporecosetup
+    restart: "no"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+
+      POSTGRES_DB: ${POSTGRES_DB:-github_data}
+      POSTGRES_USER: ${POSTGRES_ADMIN:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres}
+      COLLECTOR_DB_USER: ${COLLECTOR_DB_USER:-github_collector}
+      COLLECTOR_DB_PASSWORD: ${COLLECTOR_DB_PASSWORD:-collector_password_change_me}
+
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+    networks:
+      - gitreporeco-net
+
+  # --------------------------------------------------------
+  # GitRepoCollector — Collecteur de données GitHub
+  # GitRepoCollector — Collecteur de données GitHub (droits restreints)
+  # --------------------------------------------------------
+  collector-github:
+    image: ghcr.io/gitreporeco/gitrepocollector:v1.6.1
+    container_name: github_collector
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gitreporeco-setup:
+        condition: service_completed_successfully
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-github_data}
+      POSTGRES_USER: ${COLLECTOR_DB_USER:-github_collector}
+      POSTGRES_PASSWORD: ${COLLECTOR_DB_PASSWORD:-collector_password_change_me}
+      
+      STAR_TIERS: ${STAR_TIERS:-100000,75000,50000,30000,20000,10000,5000,1000,500,100}
+      
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      
+      MAX_REPOSITORIES: ${MAX_REPOSITORIES:-0}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-300}
+      PAGE_SIZE: ${PAGE_SIZE:-25}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+    networks:
+      - gitreporeco-net
+
+# --------------------------------------------------------
+# Réseau partagé pour GitRepoReco et futurs conteneurs
+# --------------------------------------------------------
+networks:
+  gitreporeco-net:
+    name: gitreporeco-net
+    driver: bridge
+
+# --------------------------------------------------------
+# Volumes persistants
+# --------------------------------------------------------
+volumes:
+  postgres_data:
+    name: gitreporeco_postgres_data
+

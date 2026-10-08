@@ -1,0 +1,8 @@
+.env
+.env.example
+__pycache__/
+.vscode/
+*.pyc
+*.pyo
+.git/
+.gitignore
