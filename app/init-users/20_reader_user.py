@@ -17,7 +17,7 @@ def apply(conn) -> None:
         ensure_login_role(cur, READER_DB_USER, READER_DB_PASSWORD)
 
         # Accorde la connexion à la base de données
-        grant_db_connect(cur, READER_DB_USER, POSTGRES_DB)
+        grant_db_connect(cur, POSTGRES_DB, READER_DB_USER)
 
         # Révoque tous les privilèges sur les schémas existants
         revoke_schema_all(cur, "public", POSTGRES_DB)
