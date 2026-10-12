@@ -91,7 +91,7 @@ services:
       - gitreporeco-net
 
   gitreporeco-api:
-    image: ghcr.io/gitreporeco/gitrepoapi:v1.1
+    image: ghcr.io/gitreporeco/gitrepoapi:v1.1.4
     container_name: gitreporeco_api
     restart: unless-stopped
 
