@@ -20,7 +20,7 @@ def apply(conn) -> None:
         grant_db_connect(cur, POSTGRES_DB, READER_DB_USER)
 
         # Révoque tous les privilèges sur les schémas existants
-        revoke_schema_all(cur, "public", POSTGRES_DB)
+        revoke_schema_all(cur, "public", READER_DB_USER)
 
         # Accorde les privilèges en lecture seule sur les schémas existants
-        grant_schema_read_only(cur, "github", POSTGRES_DB)
+        grant_schema_read_only(cur, "github", READER_DB_USER)
