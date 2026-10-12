@@ -31,10 +31,8 @@ services:
   # GitRepoReco Init — Initialisation de la base (schémas, extensions, tables)
   # --------------------------------------------------------
   gitreporeco-setup:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: gitreporecosetup
+    image: ghcr.io/gitreporeco/gitreposetup:latest
+    container_name: gitreporeco_setup
     restart: "no"
 
     depends_on:
@@ -61,7 +59,7 @@ services:
   # GitRepoCollector — Collecteur de données GitHub (droits restreints)
   # --------------------------------------------------------
   collector-github:
-    image: ghcr.io/gitreporeco/gitrepocollector:v1.6.1
+    image: ghcr.io/gitreporeco/gitrepocollector:v1.7
     container_name: github_collector
     restart: unless-stopped
 
@@ -77,6 +75,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-github_data}
       POSTGRES_USER: ${COLLECTOR_DB_USER:-github_collector}
       POSTGRES_PASSWORD: ${COLLECTOR_DB_PASSWORD:-collector_password_change_me}
+      READER_DB_USER: ${READER_DB_USER:-github_reader}
+      READER_DB_PASSWORD: ${READER_DB_PASSWORD:-reader_password_change_me}
       
       STAR_TIERS: ${STAR_TIERS:-100000,75000,50000,30000,20000,10000,5000,1000,500,100}
       
@@ -86,6 +86,32 @@ services:
       POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-300}
       PAGE_SIZE: ${PAGE_SIZE:-25}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+    networks:
+      - gitreporeco-net
+
+  gitreporeco-api:
+    image: ghcr.io/gitreporeco/gitrepoapi:v1.1
+    container_name: gitreporeco_api
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gitreporeco-setup:
+        condition: service_completed_successfully
+
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-github_data}
+      POSTGRES_USER: ${READER_DB_USER:-github_reader}
+      POSTGRES_PASSWORD: ${READER_DB_PASSWORD:-reader_password_change_me}
+
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+    ports:
+      - "${API_PORT:-8000}:8000"
 
     networks:
       - gitreporeco-net
