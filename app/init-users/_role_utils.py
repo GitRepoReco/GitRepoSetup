@@ -59,6 +59,49 @@ def revoke_schema_all(cur, schema_name: str, username: str) -> None:
     )
 
 
+def revoke_all_schemas(cur, username: str) -> None:
+    # Récupération de tous les schémas existants
+    cur.execute("""
+        SELECT schema_name
+        FROM information_schema.schemata
+        WHERE schema_name NOT IN ('information_schema', 'pg_catalog')
+    """)
+
+    schemas = [row[0] for row in cur.fetchall()]
+
+    for schema_name in schemas:
+        schema_ident = sql.Identifier(schema_name)
+        user_ident = sql.Identifier(username)
+
+        # Révocation des droits sur le schéma
+        cur.execute(
+            sql.SQL("REVOKE ALL PRIVILEGES ON SCHEMA {} FROM {};").format(
+                schema_ident, user_ident
+            )
+        )
+
+        # Révocation des droits sur les tables et vues
+        cur.execute(
+            sql.SQL("REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA {} FROM {};").format(
+                schema_ident, user_ident
+            )
+        )
+
+        # Révocation des droits sur les séquences
+        cur.execute(
+            sql.SQL("REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA {} FROM {};").format(
+                schema_ident, user_ident
+            )
+        )
+
+        # Révocation des droits sur les fonctions
+        cur.execute(
+            sql.SQL("REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA {} FROM {};").format(
+                schema_ident, user_ident
+            )
+        )
+
+
 def grant_schema_dml(cur, schema_name: str, username: str) -> None:
     cur.execute(
         sql.SQL("GRANT USAGE ON SCHEMA {schema_ident} TO {user_ident};").format(
@@ -132,6 +175,15 @@ def grant_schema_read_only(cur, schema_name: str, username: str) -> None:
             "ALTER DEFAULT PRIVILEGES IN SCHEMA {schema_ident} GRANT SELECT ON SEQUENCES TO {user_ident};"
         ).format(
             schema_ident=sql.Identifier(schema_name),
+            user_ident=sql.Identifier(username),
+        )
+    )
+
+
+def grant_system_role(cur, role_name: str, username: str) -> None:
+    cur.execute(
+        sql.SQL("GRANT {role_ident} TO {user_ident};").format(
+            role_ident=sql.Identifier(role_name),
             user_ident=sql.Identifier(username),
         )
     )
