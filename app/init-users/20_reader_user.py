@@ -25,6 +25,7 @@ def apply(conn) -> None:
         # Accorde les privilèges en lecture seule sur les schémas existants
         grant_schema_read_only(cur, "github", READER_DB_USER)
         grant_schema_read_only(cur, "monitoring", READER_DB_USER)
+        grant_schema_read_only(cur, "embedding", READER_DB_USER)
 
         # Accorde l'accès aux vues de monitoring PostgreSQL (pg_stat_activity, etc.)
         grant_system_role(cur, "pg_monitor", READER_DB_USER)
